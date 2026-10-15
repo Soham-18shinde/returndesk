@@ -54,6 +54,8 @@ const CREATE_FIELDS = new Set([
   "quantity",
   "reason",
 ]);
+const EMAIL_PATTERN = /^(?!\.)(?!.*\.\.)[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+(?<!\.)@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$/i;
+export const CUSTOMER_CONTACT_ERROR = "Enter a valid email address or a 10-digit Indian mobile number.";
 const TRANSITIONS = {
   Open: ["InReview"],
   InReview: ["Approved", "Rejected"],
@@ -79,6 +81,19 @@ function rejectUnknownFields(body, allowedFields) {
 function requiredText(value, field) {
   if (typeof value !== "string" || !value.trim()) {
     throw new ApiError(422, "INVALID_FIELD", `${field} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+
+export function isValidCustomerContact(value) {
+  if (typeof value !== "string") return false;
+  const contact = value.trim();
+  return /^\d{10}$/.test(contact) || EMAIL_PATTERN.test(contact);
+}
+
+function parseCustomerContact(value) {
+  if (typeof value !== "string" || !isValidCustomerContact(value)) {
+    throw new ApiError(400, "INVALID_CUSTOMER_CONTACT", CUSTOMER_CONTACT_ERROR);
   }
   return value.trim();
 }
@@ -142,7 +157,7 @@ export function parseCreatePayload(value) {
   }
   return {
     customerName: requiredText(body.customerName, "customerName"),
-    customerContact: requiredText(body.customerContact, "customerContact"),
+    customerContact: parseCustomerContact(body.customerContact),
     orderNumber: requiredText(body.orderNumber, "orderNumber"),
     itemName: requiredText(body.itemName, "itemName"),
     quantity,

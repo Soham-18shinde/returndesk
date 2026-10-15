@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CUSTOMER_CONTACT_ERROR, isValidCustomerContact } from "@/lib/return-validation";
 
 const REASONS = ["Damaged", "Wrong Item", "Size Issue", "Not As Described", "Changed Mind"];
 const EMPTY_FORM = {
@@ -23,6 +24,9 @@ const FIELD_LABELS = {
 };
 
 function validateField(field, value) {
+  if (field === "customerContact") {
+    return isValidCustomerContact(value) ? "" : CUSTOMER_CONTACT_ERROR;
+  }
   if (field === "quantity") {
     if (!/^\d+$/.test(value) || Number(value) < 1) return "Enter a positive whole number.";
     return "";
