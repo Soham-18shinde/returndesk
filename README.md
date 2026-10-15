@@ -1,45 +1,46 @@
 # ReturnDesk
 
-ReturnDesk is a returns management application for an online store. It provides a centralized interface for staff to create, review, approve, reject, and track return requests while maintaining a history of notes and request updates.
+**A returns management system for online retail operations.**
 
-## Live Application
+ReturnDesk helps store staff manage customer return requests from creation through review, approval or rejection, and final resolution. It provides searchable request records, controlled status transitions, resolution tracking, and chronological notes.
 
-**Deployment URL:** Pending deployment.
+## Live Demo
 
-**GitHub Repository:** https://github.com/Soham-18shinde/returndesk
+- **Application:** https://returndesk-seven.vercel.app/
+- **GitHub Repository:** https://github.com/Soham-18shinde/returndesk
 
 ## Features
 
-- **Returns dashboard:** Browse return requests with search, status and reason filters, sorting, and server-side pagination.
-- **Create requests:** Record customer details, order reference, item, quantity, and return reason.
-- **Request details:** View an individual return request and its chronological notes.
-- **Status management:** Move requests through the supported return lifecycle.
-- **Resolution management:** Record a refund, replacement, or store credit when approving a request.
-- **Notes:** Append notes to maintain a chronological record of updates.
-- **Validation:** Validate incoming data and return structured API errors.
+- **Returns dashboard:** Search by customer, order reference, or return reference.
+- **Filtering and sorting:** Filter by status and reason, sort results, and navigate paginated results.
+- **Create requests:** Record customer details, order reference, item, quantity, and reason.
+- **Request details:** View and update eligible return requests.
+- **Status workflow:** Enforce valid transitions between Open, In Review, Approved, Rejected, and Completed.
+- **Resolution tracking:** Support Refund, Replacement, and Store Credit.
+- **Chronological notes:** Append notes to maintain a history of updates.
+- **Business-rule validation:** Validate operations on the server and enforce relevant constraints in the database.
 - **Soft deletion:** Remove eligible requests without permanently deleting their records.
-- **Demonstration data:** Seed the database with sample requests across different statuses and reasons.
+- **Seed data:** Populate the database with fictional demonstration requests and notes.
 
 ## Technology Stack
 
-- **Framework:** Next.js App Router
-- **Language:** JavaScript
-- **Frontend:** React
-- **Styling:** Tailwind CSS
-- **Database:** PostgreSQL
-- **ORM and migrations:** Prisma
-- **Database hosting:** Neon
-- **Database adapter:** Prisma Neon adapter
-
-## Prerequisites
-
-Before setting up the project, install:
-
-- Node.js and npm
-- Git
-- Access to a PostgreSQL database, such as a Neon database
+| Layer | Technology |
+|---|---|
+| Framework | Next.js App Router |
+| Language | JavaScript |
+| UI | React |
+| Styling | Tailwind CSS |
+| Database | PostgreSQL |
+| ORM and migrations | Prisma |
+| Database hosting | Neon |
+| Database adapter | Prisma Neon adapter |
+| Deployment | Vercel |
 
 ## Getting Started
+
+### Prerequisites
+
+Install Node.js, npm, Git, and create a PostgreSQL database. A Neon PostgreSQL database can be used for local development.
 
 ### 1. Clone the repository
 
@@ -56,18 +57,14 @@ npm install
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the project root using `.env.example` as the template.
+Create a `.env` file in the project root and copy the variable names from `.env.example`.
 
-Configure the following variables:
+Configure:
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | PostgreSQL pooled connection string used by the application |
-| `DIRECT_URL` | Direct PostgreSQL connection string used for database migration operations |
+- `DATABASE_URL` — the PostgreSQL connection string used by the application.
+- `DIRECT_URL` — the direct PostgreSQL connection string used for migration operations.
 
-Use the appropriate connection strings for your own database. For Neon, the pooled connection string and direct connection string can be obtained from the database connection settings.
-
-Do not commit `.env` or expose database credentials. The committed `.env.example` contains placeholders rather than real credentials.
+Use connection strings from your own database provider. Keep credentials private and never commit `.env`.
 
 ### 4. Generate the Prisma Client
 
@@ -81,17 +78,15 @@ npm run db:generate
 npm run db:migrate:deploy
 ```
 
-This applies the committed Prisma migrations to the configured database. It prepares the database schema without creating a new development migration.
+This applies the committed migrations to the configured database.
 
-### 6. Seed the database
+### 6. Seed demonstration data
 
 ```bash
 npm run db:seed
 ```
 
-The seed script populates the database with demonstration return requests and notes.
-
-The seed implementation is designed to handle existing sample records. Review `prisma/seed.js` before running it against a database containing data you need to preserve.
+The seed script prepares sample return requests and notes. Review `prisma/seed.js` before running it against a database containing data you need to preserve.
 
 ### 7. Start the development server
 
@@ -99,25 +94,23 @@ The seed implementation is designed to handle existing sample records. Review `p
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Available Commands
 
-| Command | Description |
+| Command | Purpose |
 |---|---|
 | `npm run dev` | Start the development server |
-| `npm run build` | Create a production build |
+| `npm run build` | Build the application for production |
 | `npm run start` | Start the production server after building |
-| `npx eslint .` | Run ESLint checks |
+| `npm run lint` | Run ESLint |
 | `npm run db:generate` | Generate the Prisma Client |
-| `npm run db:migrate` | Create and apply development migrations |
-| `npm run db:migrate:deploy` | Apply committed database migrations |
-| `npm run db:seed` | Seed the database with demonstration data |
+| `npm run db:migrate` | Create and apply a development migration |
+| `npm run db:migrate:deploy` | Apply committed migrations |
+| `npm run db:seed` | Seed demonstration data |
 | `node --test tests/return-validation.test.js` | Run return-validation unit tests |
 
-## Return Request Lifecycle
-
-The supported workflow is:
+## Return Request Workflow
 
 ```text
 Open
@@ -127,7 +120,9 @@ Open
         └── Rejected
 ```
 
-Rejected and Completed requests are terminal states.
+Rejected and Completed are terminal statuses. Unsupported status transitions are rejected.
+
+### Resolution rules
 
 Approval requires a resolution:
 
@@ -135,73 +130,51 @@ Approval requires a resolution:
 - **Replacement:** Must not include a refund amount.
 - **Store Credit:** Must not include a refund amount.
 
-Invalid status transitions and invalid resolution combinations should be rejected by the application.
+### Additional business rules
 
-## Business Rules
-
-The application implements the return-management rules defined for the assignment:
-
-- A return request has a unique, human-readable reference.
-- A new live request cannot be created for the same order and item while an existing request for that pair remains active.
-- A new request for the same order and item may be created after the previous request reaches Rejected or Completed.
-- Customer and item details become locked after a request is Approved, Rejected, or Completed.
-- Notes can be added throughout the request lifecycle.
-- Only Open and Rejected requests can be removed.
-- Removal is handled through soft deletion, and removed requests are excluded from normal list and detail access.
-- Status changes must follow the supported lifecycle.
-- Approval requires a valid resolution and the corresponding refund-amount rules.
-
-These rules are enforced through the application's validation and database implementation, as applicable.
+- Every request receives a unique, human-readable reference.
+- Only one active request may exist for the same order and item.
+- A new request for that order and item is permitted after the previous request reaches Rejected or Completed.
+- Customer and item details become locked after approval, rejection, or completion.
+- Notes remain append-only and can be added throughout the request lifecycle.
+- Only Open and Rejected requests may be removed.
+- Removal uses soft deletion, and deleted requests are excluded from normal list and detail access.
 
 ## API Overview
 
-The application exposes the following route handlers:
-
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `GET` | `/api/returns` | List and search return requests |
-| `POST` | `/api/returns` | Create a return request |
+| `GET` | `/api/returns` | List, search, filter, sort, and paginate requests |
+| `POST` | `/api/returns` | Create a request |
 | `GET` | `/api/returns/:identifier` | Retrieve a request |
-| `PATCH` | `/api/returns/:identifier` | Update an eligible request or change its status |
+| `PATCH` | `/api/returns/:identifier` | Update an eligible request or its status |
 | `DELETE` | `/api/returns/:identifier` | Soft-delete an eligible request |
-| `POST` | `/api/returns/:identifier/notes` | Append a note to a request |
+| `POST` | `/api/returns/:identifier/notes` | Append a note |
 
-The API validates incoming data and returns structured errors for invalid requests. The frontend communicates with these route handlers rather than directly modifying database records.
+The route handlers validate input and return structured JSON responses for errors. Business rules are enforced server-side rather than relying only on frontend validation.
 
 ## Design Decisions
 
-### PostgreSQL and Prisma
+**PostgreSQL and Prisma:** Relational storage keeps request data consistent, while Prisma provides schema management and migration tooling.
 
-PostgreSQL provides persistent relational storage for return requests and related records. Prisma provides the database access layer and migration tooling.
+**Server-side business rules:** The API and database enforce critical constraints so that invalid operations cannot be accepted simply by bypassing the interface.
 
-### Server-side validation
+**Explicit status transitions:** A defined lifecycle prevents arbitrary changes to request status.
 
-Validation is performed on the server so that business rules do not depend solely on frontend controls. Invalid data and unsupported operations must be rejected even when a request is sent directly to the API.
+**Append-only notes:** Keeping notes as a chronological history avoids overwriting previous updates.
 
-### Explicit status transitions
+**Soft deletion:** Eligible records are marked as deleted instead of being physically removed.
 
-The request lifecycle is defined through supported transitions. This prevents requests from being moved arbitrarily between statuses.
-
-### Append-only notes
-
-Notes preserve the history of updates. New notes are appended instead of overwriting existing notes, providing a chronological record for staff.
-
-### Soft deletion
-
-Eligible requests are marked as removed instead of being permanently deleted. This preserves stored records while keeping removed requests out of the normal user interface.
-
-### Seed data
-
-A seed script provides repeatable demonstration data so that the dashboard, filters, details, and request workflow can be evaluated without manually creating every example.
+**Seeded demonstration data:** Sample requests make it easier to evaluate dashboard filters, statuses, and detail views without manually entering every record.
 
 ## Assumptions and Scope
 
-- ReturnDesk is a standalone returns-management tool, not a customer-facing storefront.
-- Order references and item information are entered into ReturnDesk; integration with an external order-management system is outside the current scope.
-- Refund amounts are recorded during the approval workflow. The application does not independently retrieve order prices or calculate refunds from an external order system.
-- Seed records are fictional demonstration data and are not real customer or order records.
-- Database credentials and deployment-specific configuration are supplied through environment variables.
-- The application is intended to demonstrate the return-management workflow described in the assignment rather than a complete e-commerce platform.
+- ReturnDesk is an internal returns-management tool, not a customer-facing e-commerce storefront.
+- Order and item details are entered manually; external order-management integration is outside the current scope.
+- Refund amounts are recorded in the approval workflow. The application does not independently retrieve order prices from an external system.
+- Seeded customers, orders, and requests are fictional demonstration data.
+- Database credentials and deployment-specific settings are supplied through environment variables.
+- Authentication, payment execution, and integration with a live fulfilment system are outside the implemented assignment scope.
 
 ## Project Structure
 
@@ -233,38 +206,32 @@ returndesk/
 
 ## Testing and Verification
 
-The repository includes unit tests for return validation.
-
-Run them with:
+Run the validation unit tests:
 
 ```bash
 node --test tests/return-validation.test.js
 ```
 
-Run the lint checks and production build with:
+Run lint checks and a production build:
 
 ```bash
-npx eslint .
+npm run lint
 npm run build
 ```
 
-These checks help catch validation regressions, lint errors, and build-time issues. They do not replace integration tests against a configured PostgreSQL database.
+Unit tests and build checks are useful safeguards, but they do not replace integration testing against a configured PostgreSQL database or end-to-end testing of the deployed application.
 
 ## Known Limitations and Future Improvements
 
-- Integration with an external order-management system and automatic retrieval of order prices are outside the current scope.
-- Automated integration tests for the API, database constraints, and complete request lifecycle would improve regression coverage.
-- Additional accessibility testing and production monitoring would help prepare the application for broader production use.
-- Deployment and database configuration must be verified in the target hosting environment.
-
-Only features verified in the submitted application should be considered complete. Any issues discovered during final verification should be documented honestly.
-
-## Development Time
-
-**Approximate time spent:** [Enter your actual approximate hours.]
+- Add automated API integration and end-to-end tests.
+- Add authentication and role-based access control before using the application with real customer data.
+- Integrate with an external order-management system.
+- Connect approved refunds and replacements to real fulfilment or payment providers.
 
 ## Author
 
 **Soham Shinde**
 
-GitHub: [@Soham-18shinde](https://github.com/Soham-18shinde)
+GitHub: https://github.com/Soham-18shinde
+
+**Approximate development time:** 14–15 hours, including implementation, database setup, testing, deployment, and documentation.
