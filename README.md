@@ -52,19 +52,21 @@ cd returndesk
 ### 2. Install dependencies
 
 ```bash
-npm install
+npm ci
 ```
+
+`npm ci` installs the exact dependency versions recorded in `package-lock.json` and is the recommended clean-machine setup.
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the project root and copy the variable names from `.env.example`.
+Copy `.env.example` to `.env` in the project root and replace the placeholders with connection strings for your own PostgreSQL database.
 
-Configure:
+Configure both variables:
 
-- `DATABASE_URL` — the PostgreSQL connection string used by the application.
-- `DIRECT_URL` — the direct PostgreSQL connection string used for migration operations.
+- `DATABASE_URL` — the runtime connection used by the application. For Neon, use the pooled endpoint (the hostname includes `-pooler`).
+- `DIRECT_URL` — the direct, non-pooled connection used by Prisma migration commands.
 
-Use connection strings from your own database provider. Keep credentials private and never commit `.env`.
+Neon connection strings should require TLS (for example, with `sslmode=require`). Keep credentials private and never commit `.env`; `.env.example` contains placeholders only.
 
 ### 4. Generate the Prisma Client
 
@@ -79,6 +81,8 @@ npm run db:migrate:deploy
 ```
 
 This applies the committed migrations to the configured database.
+
+The `202610150001_normalized_live_order_item` migration checks for active order/item duplicates after trimming surrounding whitespace and ignoring capitalization. If any groups are found, its preflight stops before replacing the existing exact-match index. Resolve those conflicts through an approved data-management decision, then rerun the migration; the migration does not clean or rewrite request records.
 
 ### 6. Seed demonstration data
 
@@ -109,6 +113,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:migrate:deploy` | Apply committed migrations |
 | `npm run db:seed` | Seed demonstration data |
 | `node --test tests/return-validation.test.js` | Run return-validation unit tests |
+| `node --test tests/order-item-uniqueness.test.js` | Run database-backed duplicate-prevention tests against an isolated database |
 
 ## Return Request Workflow
 
@@ -198,7 +203,8 @@ returndesk/
 │       ├── return-api.js
 │       └── return-validation.js
 ├── tests/
-│   └── return-validation.test.js
+│   ├── return-validation.test.js
+│   └── order-item-uniqueness.test.js
 ├── .env.example
 ├── prisma.config.mjs
 └── package.json
@@ -218,6 +224,12 @@ Run lint checks and a production build:
 npm run lint
 npm run build
 ```
+
+The duplicate-prevention integration suite writes uniquely named synthetic requests. Run it only against a disposable PostgreSQL test database with all migrations applied. Set `RETURNDESK_TEST_DATABASE_URL` to that database before running the command; the test refuses to run if it identifies the same database as `DATABASE_URL` or `DIRECT_URL`. The suite can leave terminal test rows behind, so use a disposable database or branch and discard it after testing. It is skipped when the variable is not set.
+
+Before saying the normalized duplicate fix is live in a deployment, verify that `202610150001_normalized_live_order_item` is applied in that deployment's database. Run `npx prisma migrate status` with that deployment's environment and confirm the migration appears as applied; a successful application deployment by itself does not confirm the database migration ran.
+
+**Current production status (last checked 2026-10-15):** the last read-only check found only `202610140001_init` applied and one normalized active duplicate group containing two requests. The normalized migration is still pending there and its preflight will stop until that conflict is resolved. No production request records were changed. Recheck status before release.
 
 Unit tests and build checks are useful safeguards, but they do not replace integration testing against a configured PostgreSQL database or end-to-end testing of the deployed application.
 

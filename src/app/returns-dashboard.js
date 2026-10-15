@@ -367,9 +367,11 @@ export default function ReturnsDashboard() {
             <footer className="pagination-bar">
               <span className="pagination-summary">Showing <strong>{start}–{end}</strong> of <strong>{pagination.total}</strong> requests</span>
               <div className="pagination-actions">
-                <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} type="button">Previous</button>
-                <span aria-live="polite">Page {pagination.totalPages ? pagination.page : 0} of {pagination.totalPages}</span>
-                <button disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} type="button">Next</button>
+                <button disabled={pagination.totalPages === 0 || page <= 1} onClick={() => setPage((value) => value - 1)} type="button">Previous</button>
+                <span aria-live="polite">
+                  {pagination.totalPages > 0 ? `Page ${pagination.page} of ${pagination.totalPages}` : "No pages"}
+                </span>
+                <button disabled={pagination.totalPages === 0 || page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} type="button">Next</button>
               </div>
             </footer>
           )}
