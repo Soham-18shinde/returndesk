@@ -1,138 +1,224 @@
 # ReturnDesk — Returns Management System
 
-ReturnDesk is a full-stack web application for managing product return requests. It helps a store team create return requests, track their status, review them, record decisions, and maintain notes.
+ReturnDesk is a full-stack application for an internal support team to create, review, and manage product return requests. It uses Next.js App Router, JavaScript, PostgreSQL, and Prisma.
 
-## Live Demo
+## Project Links
 
-- **Live Application:** https://returndesk-seven.vercel.app/
-- **GitHub Repository:** https://github.com/Soham-18shinde/returndesk
+- **Live application:** https://returndesk-seven.vercel.app/
+- **GitHub repository:** https://github.com/Soham-18shinde/returndesk
 
-## Features
+The deployed application and its production database state should be verified independently. The presence of a migration in the repository does not establish that it has been applied to production.
 
-- Create return requests with customer details, order reference, item name, quantity, and reason.
-- Generate human-readable return references.
-- View and search return requests.
-- Filter requests by status and reason.
-- Sort and paginate the returns list.
-- View individual return request details.
-- Add notes to return requests.
-- Manage return statuses according to the supported workflow.
-- Select a resolution when approving a return.
-- Validate refund amounts and other request data.
-- Prevent invalid status transitions and duplicate active returns for the same order and item.
-- Soft-delete eligible return requests.
-- Display loading, empty, and error states in the interface.
-- Use the responsive interface on desktop and mobile screens.
+## Features Implemented
 
-## Tech Stack
+- Create return requests with customer name and contact, order reference, item name, positive integer quantity, and a reason.
+- Generate unique, human-readable references in the `RD-YYYY-NNNN` format.
+- Search by customer name, order number, or return reference.
+- Combine search with status and reason filters, allowlisted sorting, and server-side pagination.
+- View request details and chronological notes.
+- Append notes at any status without overwriting previous notes.
+- Edit request details before a final decision.
+- Enforce the return lifecycle: **Open → In Review → Approved → Completed**, or **In Review → Rejected**.
+- Require a resolution when approving a request: Refund, Replacement, or Store Credit.
+- Require a refund amount greater than zero for Refund; other resolutions cannot have a refund amount.
+- Prevent duplicate active requests for the same order and item, using case-insensitive and whitespace-normalized comparisons.
+- Allow a new request for the same order and item after the previous request is Rejected, Completed, or soft-removed.
+- Soft-remove only Open or Rejected requests. Removed records remain in the database but are excluded from normal list and detail results.
+- Display status counts and allow the request list to be filtered by selecting a status count.
+- Provide loading, empty, validation, and server-error states in a responsive interface.
 
-- **Frontend:** Next.js, React, Tailwind CSS
-- **Backend:** Next.js App Router and Route Handlers
-- **Database:** PostgreSQL using Neon
-- **ORM:** Prisma
-- **Testing:** Node.js test runner
+## Technology Stack
 
-## Prerequisites
+| Area | Technology |
+|---|---|
+| Frontend and backend | Next.js App Router, React, JavaScript |
+| Styling | Tailwind CSS 4 and project CSS |
+| API | Next.js Route Handlers |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| Database adapter | Prisma Neon adapter |
+| Unit and integration tests | Node.js built-in test runner |
+| Deployment | Vercel and Neon PostgreSQL |
 
-Install the following before running the project:
+## Requirements
 
-- Node.js
-- npm
+- Node.js and npm
 - Git
-- A PostgreSQL database, such as Neon
+- A PostgreSQL database
 
-## Getting Started
+The submitted deployment uses Neon. Another compatible PostgreSQL instance can be used for local development.
 
-Follow these steps to run ReturnDesk locally.
+## Local Setup
 
 ### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Soham-18shinde/returndesk.git
 cd returndesk
-```
-
-### 2. Install dependencies
-
-```bash
 npm ci
 ```
 
-### 3. Configure environment variables
+### 2. Configure environment variables
 
-Create a `.env` file in the project root by copying `.env.example`.
+Copy `.env.example` to `.env`.
 
-On Windows PowerShell:
+In PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Open `.env` and add your actual Neon database connection strings:
+Configure both database URLs with credentials for your own database:
 
 ```env
-DATABASE_URL="your-neon-pooled-connection-string"
-DIRECT_URL="your-neon-direct-connection-string"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST-pooler/returndesk?sslmode=require"
+DIRECT_URL="postgresql://USER:PASSWORD@HOST/returndesk?sslmode=require"
 ```
 
-- `DATABASE_URL` is the pooled database connection used by the application.
-- `DIRECT_URL` is the direct database connection used for database operations such as migrations.
+- `DATABASE_URL` is used by the runtime Prisma client and seed script.
+- `DIRECT_URL` is used by Prisma migrations.
 
-Replace the example values with your actual connection strings. Keep your `.env` file private and never commit database credentials to GitHub.
+Replace the placeholders with your actual connection strings. Never commit `.env` or real credentials. The repository's `.gitignore` excludes environment files while allowing `.env.example`.
 
-### 4. Generate the Prisma Client
+### 3. Generate Prisma Client, migrate, and seed
 
 ```bash
 npm run db:generate
-```
-
-### 5. Apply database migrations
-
-```bash
 npm run db:migrate:deploy
-```
-
-This applies the migrations included in the repository to the configured database.
-
-**Important:** Use a development database when setting up a fresh local environment. Before applying pending migrations to an existing production database, review the migration and verify the current database state.
-
-### 6. Add sample data
-
-```bash
 npm run db:seed
 ```
 
-The seed script creates or updates sample return requests for development and demonstration purposes. Review the seed script before running it against an existing database, as it may update eligible sample records.
+`db:migrate:deploy` applies pending repository migrations to the database selected by the configured connection URLs. Use a clean local database when setting up a fresh instance.
 
-### 7. Start the development server
+The seed script is designed to be rerun. It creates or updates eligible sample requests and adds missing sample notes without resetting or deleting database records. Review `prisma/seed.js` before running it against a database containing data you care about.
+
+#### Important migration note
+
+The normalized order/item uniqueness migration checks for existing active duplicate groups using case-insensitive, whitespace-normalized comparisons. If conflicting groups exist, the migration stops and reports the number of duplicate groups instead of silently modifying or deleting records.
+
+Resolve any conflicts intentionally before retrying the migration. Review migration SQL and verify the target database before applying migrations, especially in production.
+
+Check migration status with:
+
+```bash
+npx prisma migrate status
+```
+
+Run this command against the intended database configuration. A migration file in the repository does not prove that production has applied it.
+
+### 4. Start the application
 
 ```bash
 npm run dev
 ```
 
-Open the following URL in your browser:
+Open [http://localhost:3000](http://localhost:3000).
 
-http://localhost:3000
+## API Overview
 
-## Return Request Workflow
+All listed API routes return JSON. Errors use a machine-readable `error` object containing a code and message.
 
-The application supports the following return statuses:
+| Method and route | Purpose |
+|---|---|
+| `GET /api/returns` | List requests with search, filters, sorting, and pagination |
+| `POST /api/returns` | Create a return request and generate its reference |
+| `GET /api/returns/:identifier` | Retrieve a request by ID or reference, including notes |
+| `PATCH /api/returns/:identifier` | Update eligible details, status, or resolution |
+| `DELETE /api/returns/:identifier` | Soft-remove an eligible request |
+| `POST /api/returns/:identifier/notes` | Append a note to a request |
 
-1. **Open** — The return request has been created.
-2. **In Review** — The request is being reviewed.
-3. **Approved** — The return request has been approved with a resolution.
-4. **Rejected** — The return request has been rejected.
-5. **Completed** — The return process has been completed.
+The list endpoint supports these query parameters:
 
-Rejected and Completed are final statuses. The application validates status changes and rejects invalid transitions.
+- `search`
+- `status`
+- `reason`
+- `sortBy`
+- `sortOrder`
+- `page`
+- `pageSize`
 
-### Available Resolutions
+Sorting fields are allowlisted, and page size is limited to 100. Search, filtering, sorting, and pagination are applied on the server.
 
-- Refund
-- Replacement
-- Store Credit
+## Business Rules and Lifecycle
 
-A refund requires a positive refund amount. Replacement and Store Credit do not use a refund amount.
+### Status transitions
+
+- **Open:** A request can be submitted for review or removed.
+- **In Review:** A request can be approved or rejected.
+- **Approved:** A request can be completed.
+- **Rejected:** A terminal status.
+- **Completed:** A terminal status.
+
+Invalid transitions are rejected by the application. Finalized requests cannot have their customer and item details edited, but notes can still be appended.
+
+### Resolutions
+
+Approval requires one of the following:
+
+- **Refund:** A refund amount greater than zero is required.
+- **Replacement:** A refund amount must not be supplied.
+- **Store Credit:** A refund amount must not be supplied.
+
+### Duplicate requests
+
+Only one live request may exist for a given order and item combination. The database constraint normalizes capitalization and surrounding or repeated whitespace for comparisons. Rejected, Completed, and soft-removed requests do not block a new request for that order and item.
+
+### Removal
+
+Removal is a soft delete, not a permanent database deletion. Only Open and Rejected requests can be removed. Removed requests are excluded from normal list and detail results.
+
+## Design Decisions
+
+- **PostgreSQL and Prisma:** PostgreSQL provides persistent relational storage, while Prisma provides schema management, migrations, and database access.
+- **Database-enforced uniqueness:** Duplicate prevention is enforced at the database level so concurrent requests cannot bypass the rule simply because application-level checks run at different times.
+- **Normalized order/item comparison:** Case and whitespace differences should not allow duplicate live requests for the same order and item.
+- **Explicit lifecycle transitions:** Status changes are validated against the allowed workflow rather than accepting arbitrary status updates.
+- **Soft deletion:** Removed requests remain available in storage for record retention while disappearing from normal user-facing results.
+- **Append-only notes:** Notes are added as separate records with timestamps so earlier notes are retained.
+- **Server-side list operations:** Search, filters, sorting, and pagination run through the API to avoid loading the entire dataset into the browser.
+- **Separate pooled and direct connections:** The runtime can use a pooled database connection, while migration commands use a direct connection.
+
+## Assumptions
+
+- ReturnDesk is an internal support-team tool, not a customer-facing online store.
+- Each order/item combination can have only one active return request at a time.
+- Rejected and Completed requests are terminal and release the order/item combination for a future request.
+- Refund amounts must be positive when the selected resolution is Refund. Currency-specific formatting and payment processing are outside the current scope.
+- Sample customer details and order references are fictional and intended for demonstration.
+- The application is evaluated as a technical assignment; authentication and role-based permissions are not implemented.
+
+## Sample Data
+
+`prisma/seed.js` defines 30 sample requests across the five statuses and five reasons, with sample notes on some requests. It uses deterministic references and order data with a fixed date anchor.
+
+The seed script does not reset, truncate, or delete database records. It avoids restoring soft-deleted requests and does not update locked details on finalized requests. Review the script before running it against an existing database.
+
+## Tests
+
+### Validation unit tests
+
+These tests do not require a database:
+
+```bash
+node --test tests/return-validation.test.js
+```
+
+They cover request validation, lifecycle transitions, list-query validation, note input, and response/error helpers.
+
+### Order/item uniqueness integration test
+
+`tests/order-item-uniqueness.test.js` checks the PostgreSQL uniqueness constraint, including capitalization and whitespace variants, terminal and soft-deleted requests, and concurrent creation.
+
+It requires `RETURNDESK_TEST_DATABASE_URL` to point to a **separate, disposable PostgreSQL database with the repository migrations already applied**. The test skips when the variable is absent and refuses to run if the test database identity matches `DATABASE_URL` or `DIRECT_URL`. It writes test rows, so never use production for this test.
+
+In PowerShell, configure the test URL for the test process and run:
+
+```powershell
+$env:RETURNDESK_TEST_DATABASE_URL = "<isolated-test-database-url>"
+node --test tests/order-item-uniqueness.test.js
+```
+
+Prepare the test database separately and apply migrations only to that isolated database. Do not accidentally point migration or test commands at production.
 
 ## Project Structure
 
@@ -144,106 +230,66 @@ returndesk/
 │   └── seed.js
 ├── src/
 │   ├── app/
-│   │   ├── api/
-│   │   ├── returns/
+│   │   ├── api/                 # Return and note route handlers
+│   │   ├── returns/             # Create and detail pages
 │   │   ├── globals.css
 │   │   ├── layout.js
-│   │   ├── page.js
+│   │   ├── page.js              # Dashboard
 │   │   ├── return-details.js
 │   │   ├── return-form.js
 │   │   └── returns-dashboard.js
-│   └── lib/
-│       ├── prisma.js
-│       ├── return-api.js
-│       └── return-validation.js
+│   └── lib/                     # Prisma client, API helpers, validation
 ├── tests/
 │   ├── return-validation.test.js
 │   └── order-item-uniqueness.test.js
 ├── .env.example
-├── .gitignore
 ├── package.json
-├── package-lock.json
-├── prisma.config.mjs
-└── README.md
+└── prisma.config.mjs
 ```
 
 ## Available Commands
 
-Run these commands from the project directory.
-
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Start the development server |
-| `npm run build` | Build the application |
+| `npm run build` | Build the production application |
 | `npm run start` | Start the production server |
-| `npm run lint` | Check the code for linting issues |
-| `npm run db:generate` | Generate the Prisma Client |
-| `npm run db:migrate` | Run the configured development migration command |
+| `npm run lint` | Run ESLint |
+| `npm run db:generate` | Generate Prisma Client |
+| `npm run db:migrate` | Run `prisma migrate dev` |
 | `npm run db:migrate:deploy` | Apply pending migrations |
-| `npm run db:seed` | Add or update sample data |
-
-## Running Tests
-
-### Unit tests
-
-Run the validation test suite:
-
-```bash
-node --test tests/return-validation.test.js
-```
-
-### Database integration test
-
-The order-and-item uniqueness test requires a separate test database if its configuration expects `RETURNDESK_TEST_DATABASE_URL`.
-
-Create a disposable PostgreSQL database for testing, configure the variable only as required by the test, and inspect the test setup before running it. Never point destructive integration-test setup at your production database.
-
-Do not add `RETURNDESK_TEST_DATABASE_URL` to your normal application configuration unless you need it for this test.
-
-## Database Notes
-
-ReturnDesk uses Prisma to manage its PostgreSQL data model and migrations.
-
-The database contains return request records and their associated notes. Migration files are maintained in the repository.
-
-Before deploying a database migration:
-
-1. Review the migration file.
-2. Check which migrations have already been applied.
-3. Check for existing records that could conflict with new constraints.
-4. Back up important data where appropriate.
-5. Apply the migration only after verifying that it is safe for the target database.
+| `npm run db:seed` | Run the configured seed script |
+| `npx prisma migrate status` | Check migration status for the configured database |
 
 ## Deployment
 
-The application is deployed on Vercel and uses Neon PostgreSQL.
+The submitted application is hosted at [returndesk-seven.vercel.app](https://returndesk-seven.vercel.app/), and its source is available in the [GitHub repository](https://github.com/Soham-18shinde/returndesk).
 
-- **Live Application:** https://returndesk-seven.vercel.app/
-- **Source Code:** https://github.com/Soham-18shinde/returndesk
+For a deployment:
 
-To deploy your own copy:
+1. Configure `DATABASE_URL` and `DIRECT_URL` in the hosting environment.
+2. Review the pending migrations and the target database state.
+3. Apply migrations to the intended database.
+4. Verify migration status independently.
+5. Check the deployed pages and API routes.
 
-1. Import the GitHub repository into Vercel.
-2. Configure the required environment variables in Vercel.
-3. Connect the appropriate Neon PostgreSQL database.
-4. Verify the database migration state.
-5. Deploy the application and check the deployed pages and API routes.
+The repository alone does not confirm current deployment availability or the migration state of the production database.
 
-## Security
+## Limitations and Future Improvements
 
-- Do not commit `.env` or real database credentials.
-- Use `.env.example` to document required environment variables.
-- Use a separate database for destructive integration tests.
-- Verify database migrations before applying them to production.
+- Authentication and role-based access control are not implemented.
+- The API does not currently restrict access by support-team role.
+- Automated coverage can be expanded with additional API and end-to-end tests.
+- The uniqueness integration test requires a separately configured disposable PostgreSQL database and is not run by the validation unit-test command.
 
-## Future Improvements
+These items are limitations or possible future improvements, not implemented features.
 
-Possible improvements include authentication, role-based access control, and additional automated integration tests.
+## Development Time
 
-These are potential future improvements and should not be considered implemented features unless they are added to the application.
+**Approximate development time:** [15-16 hours.
+
+This is an approximate total for implementation, debugging, testing, and documentation.
 
 ## Author
 
-**Soham Shinde**
-
-GitHub: https://github.com/Soham-18shinde
+**Soham Shinde** — [GitHub Profile](https://github.com/Soham-18shinde)
